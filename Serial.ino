@@ -12,13 +12,20 @@ unsigned long last_activity = 0;
 
 void serial_setup()
 {
-  if(serial_started)
+  if (serial_started)
   {
     Serial.end();
   }
   Serial.begin(current_config.baudrate);
+#if defined(ESP8266)
+  Serial.swap();
+#elif defined(ESP32)
+#else
+#error "This ain't a ESP8266 or ESP32, dumbo!"
+#endif
+
   serial_started = true;
-  
+
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
   telnet.begin();
@@ -27,19 +34,19 @@ void serial_setup()
 
 bool serial_loop()
 {
-  if(telnet.hasClient())
+  if (telnet.hasClient())
   {
-    if(client != NULL)
+    if (client != NULL)
     {
       client.stop();
-      client = NULL;
+      //client = NULL;
     }
-    
+
     client = telnet.available();
     paused = false;
   }
-  
-  if(!client.connected())
+
+  if (!client.connected())
   {
     client.stop();
     return false;
@@ -47,8 +54,8 @@ bool serial_loop()
 
   int net_avail = client.available();
   unsigned long current_millis = millis();
-  
-  if(net_avail > 0 && !paused)
+
+  if (net_avail > 0 && !paused)
   {
     last_activity = current_millis;
     digitalWrite(LED_PIN, HIGH);
@@ -56,36 +63,36 @@ bool serial_loop()
     Serial.write(buf, net_avail);
     digitalWrite(LED_PIN, LOW);
   }
-  
+
   int rcv_pos = 0;
   int rcv_timeout = millis();
-  
-  while(rcv_timeout > 0 && rcv_pos < sizeof(buf))
+
+  while (rcv_timeout > 0 && rcv_pos < sizeof(buf))
   {
-    if(Serial.available())
+    if (Serial.available())
     {
       digitalWrite(LED_PIN, HIGH);
       uint8_t ch = Serial.read();
       digitalWrite(LED_PIN, LOW);
 
-      if(use_xonxoff)
+      if (use_xonxoff)
       {
-        if(ch == 0x13)
+        if (ch == 0x13)
         {
           paused = true;
           continue;
         }
-        if(ch == 0x11)
+        if (ch == 0x11)
         {
           paused = false;
           continue;
         }
       }
-      
+
       buf[rcv_pos++] = ch;
 
       /* received a line terminator? if not wait for it or until timeout happened */
-      if(terminator != 0 && ch == terminator)
+      if (terminator != 0 && ch == terminator)
       {
         rcv_timeout = 0;
       }
@@ -94,21 +101,20 @@ bool serial_loop()
         rcv_timeout = millis() + buffer_timeout;
       }
     }
-    
-    if(millis() >= rcv_timeout)
+
+    if (millis() >= rcv_timeout)
     {
       rcv_timeout = 0;
     }
   }
-  
-  if(rcv_pos > 0)
+
+  if (rcv_pos > 0)
   {
     last_activity = current_millis;
     client.write(buf, rcv_pos);
   }
 
   bool activity = (current_millis - last_activity) < 1000;
-  
+
   return activity;
 }
-

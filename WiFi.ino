@@ -17,15 +17,15 @@ bool wifi_loop(void)
   static int nextTime = 0;
   static int stateCounter = 0;
 
-  if(nextTime > curTime)
+  if (nextTime > curTime)
   {
     return false;
   }
 
   /* standard refresh time */
   nextTime = curTime + 100;
-  
-  switch(status)
+
+  switch (status)
   {
     case WL_CONNECTED:
       connecting = false;
@@ -59,7 +59,7 @@ bool wifi_loop(void)
       break;
 
     case WL_DISCONNECTED:
-      if(!connecting)
+      if (!connecting)
       {
         connecting = false;
         WiFi.disconnect();
@@ -68,7 +68,7 @@ bool wifi_loop(void)
       }
       else
       {
-        if(++stateCounter > 50)
+        if (++stateCounter > 50)
         {
           connecting = false;
           WiFi.disconnect();
@@ -77,7 +77,7 @@ bool wifi_loop(void)
       }
 
     case WL_IDLE_STATUS:
-      if(!connecting)
+      if (!connecting)
       {
         connecting = true;
         WiFi.mode(WIFI_STA);
@@ -85,9 +85,9 @@ bool wifi_loop(void)
         stateCounter = 0;
         break;
       }
-      
+
     case WL_NO_SHIELD:
-      if(!connecting)
+      if (!connecting)
       {
         connecting = true;
         WiFi.mode(WIFI_STA);
@@ -96,7 +96,6 @@ bool wifi_loop(void)
         break;
       }
   }
-    
+
   return false;
 }
-
