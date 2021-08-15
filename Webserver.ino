@@ -1,9 +1,7 @@
 #if defined(ESP8266)
-#pragma message "ESP8266 stuff happening!"
 #include <ESP8266WebServer.h>
 ESP8266WebServer webserver(80);
 #elif defined(ESP32)
-#pragma message "ESP32 stuff happening!"
 #include <WebServer.h>
 WebServer webserver(80);
 #else
@@ -78,10 +76,8 @@ String SendHTML()
   ptr += "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
 
 #if defined(ESP8266)
-#pragma message "ESP8266 stuff happening!"
   sprintf(buf, "<title>ESP8266-232 '%s' Control</title>\n", current_config.hostname);
 #elif defined(ESP32)
-#pragma message "ESP32 stuff happening!"
   sprintf(buf, "<title>ESP232 '%s' Control</title>\n", current_config.hostname);
 #else
 #error "This ain't a ESP8266 or ESP32, dumbo!"
@@ -101,10 +97,8 @@ String SendHTML()
   ptr += "<body>\n";
 
 #if defined(ESP8266)
-#pragma message "ESP8266 stuff happening!"
   sprintf(buf, "<h1>ESP8266-232 - %s</h1>\n", current_config.hostname);
 #elif defined(ESP32)
-#pragma message "ESP32 stuff happening!"
   sprintf(buf, "<h1>ESP232 - %s</h1>\n", current_config.hostname);
 #else
 #error "This ain't a ESP8266 or ESP32, dumbo!"

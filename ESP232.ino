@@ -1,11 +1,9 @@
 #if defined(ESP8266)
-#pragma message "ESP8266 stuff happening!"
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #define LED_PIN 0
 const char *sync_str = "ESP8266-232-UPD";
 #elif defined(ESP32)
-#pragma message "ESP32 stuff happening!"
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #define LED_PIN 13
