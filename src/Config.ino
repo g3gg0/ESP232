@@ -16,7 +16,7 @@ void cfg_save()
 
     if (strlen(current_config.hostname) < 2)
     {
-        strcpy(current_config.hostname, "MinecraftProxy");
+        strcpy(current_config.hostname, "ESP32-unspecified");
     }
 
     file.write((uint8_t *)&current_config, sizeof(current_config));
@@ -28,7 +28,7 @@ void cfg_reset()
     memset(&current_config, 0x00, sizeof(current_config));
 
     current_config.magic = CONFIG_MAGIC;
-    strcpy(current_config.hostname, "ESP232");
+    strcpy(current_config.hostname, "ESP32-unspecified");
     
     strcpy(current_config.wifi_ssid, "(not set)");
     strcpy(current_config.wifi_password, "(not set)");
