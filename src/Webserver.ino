@@ -2,11 +2,17 @@
 #include <ESP32httpUpdate.h>
 #include "Config.h"
 
+#define xstr(s) str(s)
+#define str(s) #s
+
 WebServer webserver(80);
 extern char wifi_error[];
 extern bool wifi_captive;
 int www_wifi_scanned = -1;
 int www_last_captive = 0;
+
+#define min(a, b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
+#define max(a, b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 
 void www_setup()
 {
@@ -32,6 +38,56 @@ void www_setup()
     }
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("telnet", "tcp", 23);
+}
+
+unsigned char h2int(char c)
+{
+    if (c >= '0' && c <= '9')
+    {
+        return ((unsigned char)c - '0');
+    }
+    if (c >= 'a' && c <= 'f')
+    {
+        return ((unsigned char)c - 'a' + 10);
+    }
+    if (c >= 'A' && c <= 'F')
+    {
+        return ((unsigned char)c - 'A' + 10);
+    }
+    return (0);
+}
+
+String urldecode(String str)
+{
+    String encodedString = "";
+    char c;
+    char code0;
+    char code1;
+    for (int i = 0; i < str.length(); i++)
+    {
+        c = str.charAt(i);
+        if (c == '+')
+        {
+            encodedString += ' ';
+        }
+        else if (c == '%')
+        {
+            i++;
+            code0 = str.charAt(i);
+            i++;
+            code1 = str.charAt(i);
+            c = (h2int(code0) << 4) | h2int(code1);
+            encodedString += c;
+        }
+        else
+        {
+            encodedString += c;
+        }
+
+        yield();
+    }
+
+    return encodedString;
 }
 
 void www_activity()
@@ -111,6 +167,114 @@ void handle_test()
 
 void handle_set_parm()
 {
+    if (webserver.arg("http_download") != "" && webserver.arg("http_name") != "")
+    {
+        String url = webserver.arg("http_download");
+        String filename = webserver.arg("http_name");
+        HTTPClient http;
+
+        http.begin(url);
+
+        int httpCode = http.GET();
+
+        // Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+
+        switch (httpCode)
+        {
+            case HTTP_CODE_OK:
+            {
+                int len = http.getSize();
+                const int blocksize = 1024;
+                uint8_t *buffer = (uint8_t *)malloc(blocksize);
+
+                if (!buffer)
+                {
+                    // Serial.printf("[HTTP] Failed to alloc %d byte\n", blocksize);
+                    return;
+                }
+
+                WiFiClient *stream = http.getStreamPtr();
+                File file = SPIFFS.open("/" + filename, "w");
+
+                if (!file)
+                {
+                    // Serial.printf("[HTTP] Failed to open file\n", blocksize);
+                    return;
+                }
+
+                int written = 0;
+
+                while (http.connected() && (written < len))
+                {
+                    size_t size = stream->available();
+
+                    if (size)
+                    {
+                        int c = stream->readBytes(buffer, ((size > blocksize) ? blocksize : size));
+
+                        if (c > 0)
+                        {
+                            file.write(buffer, c);
+                            written += c;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                free(buffer);
+                file.close();
+
+                // Serial.printf("[HTTP] Finished. Wrote %d byte to %s\n", written, filename.c_str());
+                webserver.send(200, "text/plain", "Downloaded " + url + " and wrote " + written + " byte to " + filename);
+                break;
+            }
+
+            default:
+            {
+                // Serial.print("[HTTP] unexpected response\n");
+                webserver.send(200, "text/plain", "Unexpected HTTP status code " + httpCode);
+                break;
+            }
+        }
+
+        return;
+    }
+
+    if (webserver.arg("http_update") != "")
+    {
+        String url = webserver.arg("http_update");
+
+        Serial.printf("Update from %s\n", url.c_str());
+
+        ESPhttpUpdate.rebootOnUpdate(false);
+        t_httpUpdate_return ret = ESPhttpUpdate.update(url);
+
+        switch (ret)
+        {
+            case HTTP_UPDATE_FAILED:
+                webserver.send(200, "text/plain", "HTTP_UPDATE_FAILED while updating from " + url + " " + ESPhttpUpdate.getLastErrorString());
+                // Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+                break;
+
+            case HTTP_UPDATE_NO_UPDATES:
+                webserver.send(200, "text/plain", "HTTP_UPDATE_NO_UPDATES: Updating from " + url);
+                // Serial.println("Update failed: HTTP_UPDATE_NO_UPDATES");
+                break;
+
+            case HTTP_UPDATE_OK:
+                webserver.send(200, "text/html", "<html><head><meta http-equiv=\"Refresh\" content=\"5; url=/\"/></head><body><h1>Firmware updated. Rebooting...</h1>(will refresh page in 5 seconds)</body></html>");
+                webserver.close();
+                // Serial.println("Update successful");
+                delay(500);
+                ESP.restart();
+                return;
+        }
+
+        return;
+    }
     char hostname[32];
     strncpy(hostname, webserver.arg("hostname").c_str(), 32);
 
@@ -142,29 +306,7 @@ void handle_set_parm()
         // Serial.printf("[Webserver] '%s' %d %d '%s' '%s'\n", current_config.hostname, current_config.baudrate, current_config.verbose, current_config.connect_string, current_config.disconnect_string);
     }
 
-    if (webserver.arg("http_update") != "")
-    {
-        webserver.send(200, "text/text", "Updating from " + webserver.arg("http_update"));
 
-        // Serial.println("updating from: " + webserver.arg("http_update"));
-        t_httpUpdate_return ret = ESPhttpUpdate.update(webserver.arg("http_update"));
-
-        switch (ret)
-        {
-        case HTTP_UPDATE_FAILED:
-            // Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-            break;
-
-        case HTTP_UPDATE_NO_UPDATES:
-            // Serial.println("HTTP_UPDATE_NO_UPDATES");
-            break;
-
-        case HTTP_UPDATE_OK:
-            // Serial.println("HTTP_UPDATE_OK");
-            break;
-        }
-        return;
-    }
 
     if (webserver.arg("reboot") == "true")
     {
@@ -182,23 +324,21 @@ void handle_set_parm()
     www_wifi_scanned = -1;
 }
 
+void handle_NotFound()
+{
+    webserver.send(404, "text/plain", "Not found");
+}
+
 String SendHTML()
 {
     char buf[1024];
 
     www_activity();
+
     String ptr = "<!DOCTYPE html> <html>\n";
     ptr += "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
 
-#if defined(ESP8266)
-#pragma message "ESP8266 stuff happening!"
-    sprintf(buf, "<title>ESP8266-232 '%s' Control</title>\n", current_config.hostname);
-#elif defined(ESP32)
-#pragma message "ESP32 stuff happening!"
     sprintf(buf, "<title>ESP232 '%s' Control</title>\n", current_config.hostname);
-#else
-#error "This ain't a ESP8266 or ESP32, dumbo!"
-#endif
 
     ptr += buf;
     ptr += "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
@@ -228,26 +368,24 @@ String SendHTML()
     ptr += "</head>\n";
     ptr += "<body>\n";
 
-#if defined(ESP8266)
-#pragma message "ESP8266 stuff happening!"
-    sprintf(buf, "<h1>ESP8266-232 - %s</h1>\n", current_config.hostname);
-#elif defined(ESP32)
-#pragma message "ESP32 stuff happening!"
     sprintf(buf, "<h1>ESP232 - %s</h1>\n", current_config.hostname);
-#else
-#error "This ain't a ESP8266 or ESP32, dumbo!"
-#endif
+    ptr += buf;
+
+    sprintf(buf, "<h3>v1." xstr(PIO_SRC_REVNUM) " - " xstr(PIO_SRC_REV) "</h3>\n");
+    ptr += buf;
 
     if (strlen(wifi_error) != 0)
     {
-        sprintf(buf, "<h2>WiFi Error: %s</h1>\n", wifi_error);
+        sprintf(buf, "<h2>WiFi Error: %s</h2>\n", wifi_error);
+        ptr += buf;
     }
 
-    ptr += buf;
     if (!ota_enabled())
     {
         ptr += "<a href=\"/ota\">[Enable OTA]</a> ";
     }
+    sprintf(buf, "<br>\n");
+    ptr += buf;
     ptr += "<br><br>\n";
 
     ptr += "<form id=\"config\" action=\"/set_parm\">\n";
@@ -294,7 +432,6 @@ String SendHTML()
     } while (0)
 
     ADD_CONFIG("hostname", current_config.hostname, "%s", "Hostname");
-
     ADD_CONFIG("wifi_ssid", current_config.wifi_ssid, "%s", "WiFi SSID");
     ADD_CONFIG("wifi_password", current_config.wifi_password, "%s", "WiFi Password");
 

@@ -7,7 +7,7 @@ long ota_offtime = 0;
 
 void ota_setup()
 {
-    if(ota_setup_done)
+    if (ota_setup_done)
     {
         ota_enable();
         return;
@@ -53,7 +53,7 @@ bool ota_enabled()
 
 bool ota_loop()
 {
-    if(ota_enabled())
+    if (ota_enabled())
     {
         ArduinoOTA.handle();
     }

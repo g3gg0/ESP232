@@ -5,6 +5,7 @@
 #include "Config.h"
 
 t_cfg current_config;
+bool config_valid = false;
 
 void cfg_save()
 {
@@ -37,13 +38,13 @@ void cfg_reset()
     current_config.verbose = 0;
     strcpy(current_config.connect_string, "");
     strcpy(current_config.disconnect_string, "");
-
-    cfg_save();
 }
 
 void cfg_read()
 {
     File file = SPIFFS.open("/config.dat", "r");
+
+    config_valid = false;
 
     if (!file || file.isDirectory())
     {
@@ -57,6 +58,8 @@ void cfg_read()
         if (current_config.magic != CONFIG_MAGIC)
         {
             cfg_reset();
+            return;
         }
+        config_valid = true;
     }
 }

@@ -23,6 +23,19 @@ void wifi_off()
     WiFi.mode(WIFI_OFF);
 }
 
+void wifi_enter_captive()
+{
+    wifi_off();
+    WiFi.softAP(CONFIG_SOFTAPNAME);
+    dnsServer.start(53, "*", WiFi.softAPIP());
+    Serial.printf("[WiFi] Local IP: %s\n", WiFi.softAPIP().toString().c_str());
+
+    wifi_captive = true;
+
+    /* reset captive idle timer */
+    www_activity();
+}
+
 bool wifi_loop(void)
 {
     int status = WiFi.status();
@@ -30,12 +43,12 @@ bool wifi_loop(void)
     static int nextTime = 0;
     static int stateCounter = 0;
 
-    if(wifi_captive)
+    if (wifi_captive)
     {
         dnsServer.processNextRequest();
         digitalWrite(LED_PIN, ((millis() % 250) > 125) ? LOW : HIGH);
         /* captive mode, but noone cares */
-        if(!www_is_captive_active())
+        if (!www_is_captive_active())
         {
             Serial.printf("[WiFi] Timeout in captive, trying known networks again\n");
             sprintf(wifi_error, "Timeout in captive, trying known networks again");
@@ -56,32 +69,23 @@ bool wifi_loop(void)
     /* standard refresh time */
     nextTime = curTime + 500;
 
-
     /* when stuck at a state, disconnect */
     if (++stateCounter > 20)
     {
-        //Serial.printf("[WiFi] Timeout connecting\n");
+        // Serial.printf("[WiFi] Timeout connecting\n");
         sprintf(wifi_error, "Timeout - incorrect password?");
         wifi_off();
     }
-    
-    if(strcmp(wifi_error, ""))
+
+    if (strcmp(wifi_error, ""))
     {
-        //Serial.printf("[WiFi] Entering captive mode. Reason: '%s'\n", wifi_error);
-        wifi_off();
-        WiFi.softAP(CONFIG_SOFTAPNAME);
-        dnsServer.start(53, "*", WiFi.softAPIP());
-        //Serial.printf("[WiFi] Local IP: %s\n", WiFi.softAPIP().toString().c_str());
+        // Serial.printf("[WiFi] Entering captive mode. Reason: '%s'\n", wifi_error);
 
-        wifi_captive = true;
+        wifi_enter_captive();
 
-        /* reset captive idle timer */
-        www_activity();
-        
         stateCounter = 0;
         return false;
     }
-
 
     switch (status)
     {
@@ -89,8 +93,8 @@ bool wifi_loop(void)
             if (connecting)
             {
                 connecting = false;
-                //Serial.print("[WiFi] Connected, IP address: ");
-                //Serial.println(WiFi.localIP());
+                // Serial.print("[WiFi] Connected, IP address: ");
+                // Serial.println(WiFi.localIP());
                 stateCounter = 0;
                 sprintf(wifi_error, "");
                 digitalWrite(LED_PIN, HIGH);
