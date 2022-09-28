@@ -56,25 +56,25 @@ void sim_parse(char *line)
     if(!strcmp(line, "*STB?"))
     {
         response = "0\n";
-        //serial_println("Received STB");
     }
     else if(!strcmp(line, "*OPC?"))
     {
         response = "1\n";
-        //serial_println("Received OPC");
     }
     else if(!strcmp(line, "*CLS"))
     {
         response = "";
-        //serial_println("Received CLS");
     }
     else if(!strcmp(line, "DISP:WIND1:DATA?"))
     {
         response = "\" -0.0000 A\"\n";
-        //serial_println("Received DISP");
     }
 
-    uart_write_bytes(uart_echo, response, strlen(response));
+    if(strlen(response))
+    {
+        uart_write_bytes(uart_echo, response, strlen(response));
+        serial_println(response);
+    }
 }
 
 

@@ -89,7 +89,7 @@ bool scpi_loop()
 
             case SCPI_STATE_OPC_RESPONSE:
                 serial_println("> OPC timed out");
-                while(scpi_retries > 2);
+                //while(scpi_retries > 2);
                 
                 /* immediately restart loop, sending OPC again */
                 scpi_state = SCPI_STATE_COMMAND;
@@ -126,7 +126,7 @@ bool scpi_loop()
 
             case SCPI_STATE_RESPONSE:
                 serial_println("> RESPONSE timed out");
-                while(scpi_retries > 2);
+                //while(scpi_retries > 2);
                 
                 scpi_debug("SCPI_STATE_RESPONSE (timeout)");
                 /* query timed out */
@@ -162,7 +162,7 @@ bool scpi_loop()
             case SCPI_STATE_STB_RESPONSE:
 
                 serial_println("> STB timed out");
-                while(scpi_retries > 2);
+                //while(scpi_retries > 2);
 
                 /* immediately restart loop, sending STB again */
                 scpi_state = SCPI_STATE_STB;

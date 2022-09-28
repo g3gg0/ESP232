@@ -36,16 +36,13 @@ void cfg_reset()
     strcpy(current_config.mqtt_user, "");
     strcpy(current_config.mqtt_password, "");
     strcpy(current_config.mqtt_client, "ESP232");
-    current_config.mqtt_publish = 0;
-    current_config.mqtt_publish_rate = 5000;
+    current_config.mqtt_publish = 2;
+    current_config.mqtt_publish_rate = 250;
 
-    
     current_config.baudrate = 115200;
     current_config.verbose = 0;
     strcpy(current_config.connect_string, "");
     strcpy(current_config.disconnect_string, "");
-    
-
     
     strcpy(current_config.wifi_ssid, "(not set)");
     strcpy(current_config.wifi_password, "(not set)");

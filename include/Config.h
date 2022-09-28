@@ -1,7 +1,7 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#define CONFIG_MAGIC 0xE1AAFF03
+#define CONFIG_MAGIC 0xE1AAFF00
 
 #define CONFIG_SOFTAPNAME  "esp232-config"
 #define CONFIG_OTANAME     "ESP232"
