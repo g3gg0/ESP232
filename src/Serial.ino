@@ -80,16 +80,18 @@ void serial_print(const char *str, int length)
 #else
     Serial.write(str, length);
 #endif
-
-    udp_out.beginPacket(udpAddress, udpPort);
-    udp_out.write((const uint8_t *)"> ", 2);
-    udp_out.write((const uint8_t *)str, length);
-    udp_out.endPacket();
-
-    if (client.connected())
+    if(WiFi.status() == WL_CONNECTED)
     {
-        client.write("> ", 2);
-        client.write(str, length);
+        udp_out.beginPacket(udpAddress, udpPort);
+        udp_out.write((const uint8_t *)"> ", 2);
+        udp_out.write((const uint8_t *)str, length);
+        udp_out.endPacket();
+
+        if (client.connected())
+        {
+            client.write("> ", 2);
+            client.write(str, length);
+        }
     }
 }
 

@@ -7,7 +7,7 @@ static int scpi_state = SCPI_STATE_IDLE;
 static uint32_t scpi_request_time = 0;
 static uint32_t scpi_opc_timeout = 100;
 static uint32_t scpi_request_timeout = 500;
-static uint32_t scpi_opc_retries = 0;
+static uint32_t scpi_retries = 0;
 static uint32_t scpi_opc_retries_max = 100;
 static bool scpi_state_changed = false;
 
@@ -20,7 +20,7 @@ void scpi_debug(const char *msg)
 {
     if(0)
     {
-        serial_print("D> ", 3);
+        serial_print("> ", 3);
         serial_println(msg);
     }
 }
@@ -60,16 +60,16 @@ bool scpi_loop()
 
                 /* immediately restart loop */
                 scpi_state = SCPI_STATE_OPC;
-                scpi_opc_retries = 0;
+                scpi_retries = 0;
                 nextTime = time;
                 scpi_debug("Fetched new command");
                 continue;
 
             case SCPI_STATE_OPC:
                 /* too many failures already? */
-                if(scpi_opc_retries++ > scpi_opc_retries_max)
+                if(scpi_retries++ > scpi_opc_retries_max)
                 {
-                    scpi_debug("SCPI_STATE_OPC (scpi_opc_retries++ > scpi_opc_retries_max) -> SCPI_STATE_IDLE");
+                    scpi_debug("SCPI_STATE_OPC (scpi_retries++ > scpi_opc_retries_max) -> SCPI_STATE_IDLE");
                     scpi_current.resp(false, NULL);
 
                     /* immediately restart loop */
@@ -79,7 +79,7 @@ bool scpi_loop()
                 else
                 {
                     serial_println("*OPC?");
-                    scpi_opc_retries++;
+                    scpi_retries++;
                     scpi_request_time = millis();
                     nextTime = scpi_request_time + scpi_opc_timeout;
 
@@ -88,8 +88,12 @@ bool scpi_loop()
                 break;
 
             case SCPI_STATE_OPC_RESPONSE:
+                serial_println("> OPC timed out");
+                while(scpi_retries > 2);
+                
                 /* immediately restart loop, sending OPC again */
                 scpi_state = SCPI_STATE_COMMAND;
+                scpi_retries = 0;
                 nextTime = time;
                 break;
 
@@ -115,11 +119,15 @@ bool scpi_loop()
                     /* immediately restart loop */
                     delay(5);
                     scpi_state = SCPI_STATE_STB;
+                    scpi_retries = 0;
                     nextTime = time;
                 }
                 break;
 
             case SCPI_STATE_RESPONSE:
+                serial_println("> RESPONSE timed out");
+                while(scpi_retries > 2);
+                
                 scpi_debug("SCPI_STATE_RESPONSE (timeout)");
                 /* query timed out */
                 scpi_current.resp(false, NULL);
@@ -131,9 +139,9 @@ bool scpi_loop()
 
             case SCPI_STATE_STB:
                 /* too many failures already? */
-                if(scpi_opc_retries++ > scpi_opc_retries_max)
+                if(scpi_retries++ > scpi_opc_retries_max)
                 {
-                    scpi_debug("SCPI_STATE_STB (scpi_opc_retries++ > scpi_opc_retries_max) -> SCPI_STATE_IDLE");
+                    scpi_debug("SCPI_STATE_STB (scpi_retries++ > scpi_opc_retries_max) -> SCPI_STATE_IDLE");
                     scpi_current.resp(false, NULL);
 
                     /* immediately restart loop */
@@ -143,7 +151,7 @@ bool scpi_loop()
                 else
                 {
                     serial_println("*STB?");
-                    scpi_opc_retries++;
+                    scpi_retries++;
                     scpi_request_time = millis();
                     nextTime = scpi_request_time + scpi_opc_timeout;
 
@@ -152,6 +160,10 @@ bool scpi_loop()
                 break;
 
             case SCPI_STATE_STB_RESPONSE:
+
+                serial_println("> STB timed out");
+                while(scpi_retries > 2);
+
                 /* immediately restart loop, sending STB again */
                 scpi_state = SCPI_STATE_STB;
                 nextTime = time;
@@ -188,6 +200,7 @@ void scpi_parse(const char *line)
             if(line[0] == '1')
             {
                 scpi_state = SCPI_STATE_COMMAND;
+                scpi_retries = 0;
                 scpi_state_changed = true;
                 break;
             }
@@ -196,6 +209,7 @@ void scpi_parse(const char *line)
         case SCPI_STATE_RESPONSE:
             scpi_current.resp(true, line);
             scpi_state = SCPI_STATE_STB;
+            scpi_retries = 0;
             scpi_state_changed = true;
             break;
 
