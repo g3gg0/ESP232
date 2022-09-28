@@ -28,7 +28,7 @@ void wifi_enter_captive()
     wifi_off();
     WiFi.softAP(CONFIG_SOFTAPNAME);
     dnsServer.start(53, "*", WiFi.softAPIP());
-    Serial.printf("[WiFi] Local IP: %s\n", WiFi.softAPIP().toString().c_str());
+    //Serial.printf("[WiFi] Local IP: %s\n", WiFi.softAPIP().toString().c_str());
 
     wifi_captive = true;
 
@@ -47,6 +47,7 @@ bool wifi_loop(void)
     {
         dnsServer.processNextRequest();
         digitalWrite(LED_PIN, ((millis() % 250) > 125) ? LOW : HIGH);
+
         /* captive mode, but noone cares */
         if (!www_is_captive_active())
         {
@@ -93,8 +94,8 @@ bool wifi_loop(void)
             if (connecting)
             {
                 connecting = false;
-                // Serial.print("[WiFi] Connected, IP address: ");
-                // Serial.println(WiFi.localIP());
+                serial_println("[WiFi] Connected, IP address: ");
+                serial_println(WiFi.localIP().toString().c_str());
                 stateCounter = 0;
                 sprintf(wifi_error, "");
                 digitalWrite(LED_PIN, HIGH);

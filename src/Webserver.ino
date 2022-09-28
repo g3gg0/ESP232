@@ -275,28 +275,37 @@ void handle_set_parm()
 
         return;
     }
-    char hostname[32];
-    strncpy(hostname, webserver.arg("hostname").c_str(), 32);
 
-    if (strlen(hostname) > 0 && strlen(hostname) < 31)
-    {
-        strcpy(current_config.hostname, hostname);
-    }
 
-    int baud = atoi(webserver.arg("baud").c_str());
-    current_config.baudrate = max(1200, min(1000000, baud));
 
-    int verbose = atoi(webserver.arg("verbose").c_str());
+    current_config.baudrate = max(1200, min(1000000, webserver.arg("baud").toInt()));
+
+
+
     current_config.verbose = 0;
     current_config.verbose |= (webserver.arg("verbose_c0") != "") ? 1 : 0;
     current_config.verbose |= (webserver.arg("verbose_c1") != "") ? 2 : 0;
     current_config.verbose |= (webserver.arg("verbose_c2") != "") ? 4 : 0;
     current_config.verbose |= (webserver.arg("verbose_c3") != "") ? 8 : 0;
+    current_config.verbose |= (webserver.arg("verbose_c4") != "") ? 16 : 0;
+    current_config.mqtt_publish = 0;
+    current_config.mqtt_publish |= (webserver.arg("mqtt_publish_c0") != "") ? 1 : 0;
+    current_config.mqtt_publish |= (webserver.arg("mqtt_publish_c1") != "") ? 2 : 0;
+    current_config.mqtt_publish |= (webserver.arg("mqtt_publish_c2") != "") ? 4 : 0;
+    current_config.mqtt_publish |= (webserver.arg("mqtt_publish_c3") != "") ? 8 : 0;
+    current_config.mqtt_publish_rate = max(50, webserver.arg("mqtt_publish_rate").toInt());
 
     strncpy(current_config.connect_string, webserver.arg("conn_string").c_str(), 127);
     strncpy(current_config.disconnect_string, webserver.arg("disconn_string").c_str(), 127);
+    strncpy(current_config.hostname, webserver.arg("hostname").c_str(), sizeof(current_config.hostname));
     strncpy(current_config.wifi_ssid, webserver.arg("wifi_ssid").c_str(), sizeof(current_config.wifi_ssid));
     strncpy(current_config.wifi_password, webserver.arg("wifi_password").c_str(), sizeof(current_config.wifi_password));
+
+    strncpy(current_config.mqtt_server, webserver.arg("mqtt_server").c_str(), sizeof(current_config.mqtt_server));
+    current_config.mqtt_port = max(1, min(65535, webserver.arg("mqtt_port").toInt()));
+    strncpy(current_config.mqtt_user, webserver.arg("mqtt_user").c_str(), sizeof(current_config.mqtt_user));
+    strncpy(current_config.mqtt_password, webserver.arg("mqtt_password").c_str(), sizeof(current_config.mqtt_password));
+    strncpy(current_config.mqtt_client, webserver.arg("mqtt_client").c_str(), sizeof(current_config.mqtt_client));
 
     cfg_save();
     serial_setup();
@@ -310,7 +319,7 @@ void handle_set_parm()
 
     if (webserver.arg("reboot") == "true")
     {
-        webserver.send(200, "text/html", "<html><head><meta http-equiv=\"Refresh\" content=\"5; url=/index.html\"/></head><body><h1>Saved. Rebooting...</h1>(will refresh page in 5 seconds)</body></html>");
+        webserver.send(200, "text/html", "<html><head><meta http-equiv=\"Refresh\" content=\"5; url=/\"/></head><body><h1>Saved. Rebooting...</h1>(will refresh page in 5 seconds)</body></html>");
         delay(500);
         ESP.restart();
         return;
@@ -365,6 +374,9 @@ String SendHTML()
     ptr += "p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
     ptr += "td {padding: 0.3em}\n";
     ptr += "</style>\n";
+    /* https://github.com/mdbassit/Coloris */
+    ptr += "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css\"/>\n";
+    ptr += "<script src=\"https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.js\"></script>\n";
     ptr += "</head>\n";
     ptr += "<body>\n";
 
@@ -423,6 +435,34 @@ String SendHTML()
         ptr += buf;                                                                                                                       \
     } while (0)
 
+#define ADD_CONFIG_CHECK5(name, value, fmt, desc, text0, text1, text2, text3, text4)                                                             \
+    do                                                                                                                                    \
+    {                                                                                                                                     \
+        ptr += "<tr><td>" desc ":</td><td><div class=\"check-buttons together\">";                                                        \
+        sprintf(buf, "<input type=\"checkbox\" id=\"" name "_c0\" name=\"" name "_c0\" value=\"1\" %s>\n", (value & 1) ? "checked" : ""); \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<label for=\"" name "_c0\">" text0 "</label>\n");                                                                   \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<input type=\"checkbox\" id=\"" name "_c1\" name=\"" name "_c1\" value=\"1\" %s>\n", (value & 2) ? "checked" : ""); \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<label for=\"" name "_c1\">" text1 "</label>\n");                                                                   \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<input type=\"checkbox\" id=\"" name "_c2\" name=\"" name "_c2\" value=\"1\" %s>\n", (value & 4) ? "checked" : ""); \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<label for=\"" name "_c2\">" text2 "</label>\n");                                                                   \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<input type=\"checkbox\" id=\"" name "_c3\" name=\"" name "_c3\" value=\"1\" %s>\n", (value & 8) ? "checked" : ""); \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<label for=\"" name "_c3\">" text3 "</label>\n");                                                                   \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<input type=\"checkbox\" id=\"" name "_c4\" name=\"" name "_c4\" value=\"1\" %s>\n", (value & 16) ? "checked" : "");\
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "<label for=\"" name "_c4\">" text4 "</label>\n");                                                                   \
+        ptr += buf;                                                                                                                       \
+        sprintf(buf, "</div></td></tr>\n");                                                                                               \
+        ptr += buf;                                                                                                                       \
+    } while (0)
+
 #define ADD_CONFIG_COLOR(name, value, fmt, desc)                                                                                       \
     do                                                                                                                                 \
     {                                                                                                                                  \
@@ -467,16 +507,25 @@ String SendHTML()
 
     ptr += "</td></tr>";
 
+    ADD_CONFIG("mqtt_server", current_config.mqtt_server, "%s", "MQTT Server");
+    ADD_CONFIG("mqtt_port", current_config.mqtt_port, "%d", "MQTT Port");
+    ADD_CONFIG("mqtt_user", current_config.mqtt_user, "%s", "MQTT Username");
+    ADD_CONFIG("mqtt_password", current_config.mqtt_password, "%s", "MQTT Password");
+    ADD_CONFIG("mqtt_client", current_config.mqtt_client, "%s", "MQTT Client Identification");
+    
     ADD_CONFIG("baud", current_config.baudrate, "%d", "Baudrate");
-    ADD_CONFIG("baud", current_config.connect_string, "%s", "Connect Message");
-    ADD_CONFIG("baud", current_config.disconnect_string, "%s", "Disconnect Message");
+    ADD_CONFIG("connect_string", current_config.connect_string, "%s", "Connect Message");
+    ADD_CONFIG("disconnect_string", current_config.disconnect_string, "%s", "Disconnect Message");
     ADD_CONFIG_CHECK4("verbose", current_config.verbose, "%d", "Verbosity", "Serial", "UDP", "_", "_");
+    ADD_CONFIG("mqtt_publish_rate", current_config.mqtt_publish_rate, "%d", "Publish rate [ms]");
+    ADD_CONFIG_CHECK4("mqtt_publish", current_config.mqtt_publish, "%d", "Publish data via MQTT", "Publish string", "Publish parsed", "Exit REM", "Publish MEAS");
 
-    ADD_CONFIG("http_update", "", "%s", "Update URL");
+
+    ADD_CONFIG("http_update", "", "%s", "Update URL (<a href=\"javascript:void(0);\" onclick=\"document.getElementById('http_update').value = 'https://g3gg0.magiclantern.fm/Firmware/ESP232/firmware.bin'\">Release</a>)");
 
     ptr += "<td></td><td><input type=\"submit\" value=\"Save\"><button type=\"submit\" name=\"reboot\" value=\"true\">Save &amp; Reboot</button></td></table></form>\n";
-
     ptr += "</body>\n";
     ptr += "</html>\n";
+
     return ptr;
 }

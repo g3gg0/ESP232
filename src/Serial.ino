@@ -30,17 +30,20 @@ void serial_setup()
     if (!serial_started)
     {
 #ifdef IDF
-        uart_config_t uart_config = {
-            .baud_rate = current_config.baudrate,
+        uart_config_t uart_config =
+        {
+            .baud_rate = (int)current_config.baudrate,
             .data_bits = UART_DATA_8_BITS,
-            .parity = UART_PARITY_DISABLE,
-            .stop_bits = UART_STOP_BITS_1,
-            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE};
+            .parity = UART_PARITY_EVEN,
+            .stop_bits = UART_STOP_BITS_2,
+            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+        };
 
         pinMode(3, INPUT);
 
         uart_param_config(uart_num, &uart_config);
-        uart_set_pin(uart_num, 1, 3, -1, -1);
+        //uart_set_pin(uart_num, 1, 3, -1, -1);
+        uart_set_pin(uart_num, 1, 13, -1, -1);
         uart_driver_install(uart_num, uart_buffer_size, 0, 100, &uart_queue, 0);
         uart_set_sw_flow_ctrl(uart_num, false, 0, 0);
         uart_set_hw_flow_ctrl(uart_num, UART_HW_FLOWCTRL_DISABLE, 0);
@@ -66,6 +69,36 @@ void serial_setup()
 
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_PIN, HIGH);
+}
+
+void serial_print(const char *str, int length)
+{
+    char buf[128];
+
+#ifdef IDF
+    uart_write_bytes(uart_num, str, length);
+#else
+    Serial.write(str, length);
+#endif
+
+    udp_out.beginPacket(udpAddress, udpPort);
+    udp_out.write((const uint8_t *)"> ", 2);
+    udp_out.write((const uint8_t *)str, length);
+    udp_out.endPacket();
+
+    if (client.connected())
+    {
+        client.write("> ", 2);
+        client.write(str, length);
+    }
+}
+
+void serial_println(const char *str)
+{
+    char buf[128];
+
+    snprintf(buf, sizeof(buf), "%s\n", str);
+    serial_print(buf, strlen(buf));
 }
 
 bool serial_loop_rx()
@@ -153,11 +186,6 @@ bool serial_loop_rx()
 
 bool serial_loop_tx()
 {
-    if (!client.connected())
-    {
-        return false;
-    }
-
     /* UART part */
     int rcv_pos = 0;
     int rcv_timeout = micros();
@@ -208,6 +236,7 @@ bool serial_loop_tx()
                 digitalWrite(LED_PIN, LOW);
 
                 serial_buf[rcv_pos++] = ch;
+                scpi_cb(ch);
 
                 /* received a line terminator? if not wait for it or until timeout happened */
                 if ((terminator != 0) && (ch == terminator))
@@ -234,7 +263,7 @@ bool serial_loop_tx()
         }
     }
 
-    if (rcv_pos > 0)
+    if (rcv_pos > 0 && client.connected())
     {
         last_activity = current_millis;
         client.write(serial_buf, rcv_pos);
