@@ -276,11 +276,10 @@ void handle_set_parm()
         return;
     }
 
-
-
     current_config.baudrate = max(1200, min(1000000, webserver.arg("baud").toInt()));
-
-
+    current_config.databits = max(5, min(8, webserver.arg("databits").toInt()));
+    current_config.parity = max(0, min(2, webserver.arg("parity").toInt()));
+    current_config.stopbits = max(0, min(2, webserver.arg("stopbits").toInt()));
 
     current_config.verbose = 0;
     current_config.verbose |= (webserver.arg("verbose_c0") != "") ? 1 : 0;
@@ -514,6 +513,9 @@ String SendHTML()
     ADD_CONFIG("mqtt_client", current_config.mqtt_client, "%s", "MQTT Client Identification");
     
     ADD_CONFIG("baud", current_config.baudrate, "%d", "Baudrate");
+    ADD_CONFIG("databits", current_config.databits, "%d", "Data bits (5-8)");
+    ADD_CONFIG("parity", current_config.parity, "%d", "Parity (0=none, 1=even, 2=odd)");
+    ADD_CONFIG("stopbits", current_config.stopbits, "%d", "Stop bits (0=1, 1=1.5, 2=2)");
     ADD_CONFIG("connect_string", current_config.connect_string, "%s", "Connect Message");
     ADD_CONFIG("disconnect_string", current_config.disconnect_string, "%s", "Disconnect Message");
     ADD_CONFIG_CHECK4("verbose", current_config.verbose, "%d", "Verbosity", "Serial", "UDP", "_", "_");

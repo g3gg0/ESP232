@@ -33,17 +33,16 @@ void serial_setup()
         uart_config_t uart_config =
         {
             .baud_rate = (int)current_config.baudrate,
-            .data_bits = UART_DATA_8_BITS,
-            .parity = UART_PARITY_EVEN,
-            .stop_bits = UART_STOP_BITS_2,
+            .data_bits = (uart_word_length_t)(current_config.databits - 5),
+            .parity = (uart_parity_t)(current_config.parity ? current_config.parity + 1 : 0),
+            .stop_bits = (uart_stop_bits_t)(current_config.stopbits + 1),
             .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
         };
 
         pinMode(3, INPUT);
 
         uart_param_config(uart_num, &uart_config);
-        //uart_set_pin(uart_num, 1, 3, -1, -1);
-        uart_set_pin(uart_num, 1, 13, -1, -1);
+        uart_set_pin(uart_num, 1, 3, -1, -1);
         uart_driver_install(uart_num, uart_buffer_size, 0, 100, &uart_queue, 0);
         uart_set_sw_flow_ctrl(uart_num, false, 0, 0);
         uart_set_hw_flow_ctrl(uart_num, UART_HW_FLOWCTRL_DISABLE, 0);
@@ -190,8 +189,8 @@ bool serial_loop_tx()
 {
     /* UART part */
     int rcv_pos = 0;
-    int rcv_timeout = micros();
-    unsigned long current_millis = micros();
+    uint32_t rcv_timeout = micros();
+    uint32_t current_millis = micros();
 
     while (rcv_timeout > 0)
     {

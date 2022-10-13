@@ -12,6 +12,9 @@ typedef struct
     uint32_t magic;
     uint32_t verbose;
     uint32_t baudrate;
+    uint32_t databits;
+    uint32_t parity;
+    uint32_t stopbits;
     char hostname[32];
     char wifi_ssid[32];
     char wifi_password[32];

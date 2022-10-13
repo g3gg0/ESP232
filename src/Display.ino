@@ -16,22 +16,34 @@ bool disp_loop()
     uint32_t time = millis();
     static int nextTime = 0;
 
-    if(current_config.mqtt_publish && time >= nextTime)
+    if(current_config.mqtt_publish)
     {
+        if(time < nextTime)
+        {
+            return false;
+        }
+        if(line_queued && time > nextTime + 500)
+        {
+            line_queued = false;
+        }
+        if(line_queued)
+        {
+            return false;
+        }
         nextTime = time + current_config.mqtt_publish_rate;
         line_queued = true;
 
         if((current_config.mqtt_publish & 8))
         {
-            scpi_command(":MEAS?", true, &disp_parse_meas);
+            scpi_command(":MEAS?", true, true, &disp_parse_meas);
         }
         else
         {
             if((current_config.mqtt_publish & 4) == 0)
             {
-                scpi_command(":INIT", false, NULL);
+                scpi_command(":INIT", false, true, NULL);
             }
-            scpi_command("DISP:WIND1:DATA?", true, &disp_parse);
+            scpi_command("DISP:WIND1:DATA?", true, true, &disp_parse);
         }
     }
     return line_queued;
@@ -113,6 +125,9 @@ void disp_parse(bool success, const char *src_line)
     int start = 0;
     char line[64];
 
+        mqtt_publish_string("debug/string/%s/src_line", src_line);
+        mqtt_publish_string("debug/string/%s/success", success ? "true" : "false");
+
     if(!success)
     {
         return;
@@ -128,7 +143,7 @@ void disp_parse(bool success, const char *src_line)
     /* quit RS232 mode again */
     if(current_config.mqtt_publish & 4)
     {
-        scpi_command(":SYST:LOC", false, NULL);
+        scpi_command(":SYST:LOC", false, false, NULL);
     }
 
     line_queued = false;

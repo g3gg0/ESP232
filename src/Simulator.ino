@@ -36,7 +36,8 @@ int32_t sim_setup()
     TEST_ESP_OK(uart_param_config(uart_echo, &uart_config), -2);
     TEST_ESP_OK(uart_set_pin(uart_echo, uart1_tx, uart1_rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE), -3);
     
-
+    /* reconfigure UART 0 */
+    uart_set_pin(UART_NUM_0, 1, 13, -1, -1);
     esp_rom_gpio_connect_out_signal(uart0_rx, uart1_tx_signal, false, false);
     esp_rom_gpio_connect_out_signal(uart1_rx, uart0_tx_signal, false, false);
     

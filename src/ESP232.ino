@@ -45,21 +45,6 @@ void setup()
     serial_setup();
     dbg_setup();
 
-    int32_t ret = sim_setup();
-
-    switch(ret)
-    {
-        case -1:
-            serial_println("uart_driver_install");
-            break;
-        case -2:
-            serial_println("uart_param_config");
-            break;
-        case -3:
-            serial_println("uart_set_pin");
-            break;
-    }
-
     if (has_loopback())
     {
         ota_enable();
@@ -100,7 +85,6 @@ void loop()
 
     // if (!ota_active)
     {
-        hasWork |= sim_loop();
         hasWork |= dbg_loop();
         hasWork |= scpi_loop();
         hasWork |= wifi_loop();

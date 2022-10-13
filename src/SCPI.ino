@@ -88,7 +88,7 @@ bool scpi_loop()
                 break;
 
             case SCPI_STATE_OPC_RESPONSE:
-                serial_println("> OPC timed out");
+                scpi_debug("> OPC timed out");
                 //while(scpi_retries > 2);
                 
                 /* immediately restart loop, sending OPC again */
@@ -117,15 +117,22 @@ bool scpi_loop()
                     scpi_current.resp(true, NULL);
 
                     /* immediately restart loop */
-                    delay(5);
-                    scpi_state = SCPI_STATE_STB;
-                    scpi_retries = 0;
                     nextTime = time;
+                    if(scpi_current.check_error)
+                    {
+                        delay(5);
+                        scpi_state = SCPI_STATE_STB;
+                        scpi_retries = 0;
+                    }
+                    else
+                    {
+                        scpi_state = SCPI_STATE_IDLE;
+                    }
                 }
                 break;
 
             case SCPI_STATE_RESPONSE:
-                serial_println("> RESPONSE timed out");
+                scpi_debug("> RESPONSE timed out");
                 //while(scpi_retries > 2);
                 
                 scpi_debug("SCPI_STATE_RESPONSE (timeout)");
@@ -160,8 +167,7 @@ bool scpi_loop()
                 break;
 
             case SCPI_STATE_STB_RESPONSE:
-
-                serial_println("> STB timed out");
+                scpi_debug("> STB timed out");
                 //while(scpi_retries > 2);
 
                 /* immediately restart loop, sending STB again */
@@ -181,12 +187,13 @@ void dummy_cbr(bool success, const char *response)
 {
 }
 
-bool scpi_command(const char *command, bool has_response, void (*cbr)(bool success, const char *response))
+bool scpi_command(const char *command, bool has_response, bool check_error, void (*cbr)(bool success, const char *response))
 {
     t_scpi_command entry;
 
     strncpy(entry.command, command, sizeof(entry.command));
     entry.has_response = has_response;
+    entry.check_error = check_error;
     entry.resp = cbr ? cbr : &dummy_cbr;
 
     return xQueueSend(scpi_commands, &entry, 0) == pdTRUE;
@@ -208,7 +215,14 @@ void scpi_parse(const char *line)
 
         case SCPI_STATE_RESPONSE:
             scpi_current.resp(true, line);
-            scpi_state = SCPI_STATE_STB;
+            if(scpi_current.check_error)
+            {
+                scpi_state = SCPI_STATE_STB;
+            }
+            else
+            {
+                scpi_state = SCPI_STATE_IDLE;
+            }
             scpi_retries = 0;
             scpi_state_changed = true;
             break;
