@@ -3,6 +3,7 @@ DNSServer dnsServer;
 
 bool connecting = false;
 bool wifi_captive = false;
+int wifi_rssi = 0;
 char wifi_error[64];
 
 void wifi_setup()
@@ -102,13 +103,7 @@ bool wifi_loop(void)
             }
             else
             {
-                static int last_rssi = -1;
-                int rssi = WiFi.RSSI();
-
-                if (last_rssi != rssi)
-                {
-                    last_rssi = rssi;
-                }
+                wifi_rssi = WiFi.RSSI();
 
                 /* happy with this state, reset counter */
                 stateCounter = 0;

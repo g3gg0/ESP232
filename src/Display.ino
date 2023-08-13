@@ -14,7 +14,7 @@ void disp_init()
 bool disp_loop()
 {
     uint32_t time = millis();
-    static int nextTime = 0;
+    static uint32_t nextTime = 0;
 
     if(current_config.mqtt_publish)
     {
@@ -203,11 +203,48 @@ void disp_parse(bool success, const char *src_line)
 
 void disp_parse_meas(bool success, const char *src_line)
 {
-    int start = 0;
-    char line[64];
-
     if(!success)
     {
         return;
     }
+    
+    /* +4.016779E+00,+1.001000E+00,+9.910000E+37,+6.041777E+02,+3.584400E+04 */
+    float meas_u, meas_i, meas_r, meas_t, status;
+    /*
+        Bit 0 (OFLO) — Set to 1 if measurement was made while in over-range.
+        Bit 1 (Filter) — Set to 1 if measurement was made with the filter enabled.
+        Bit 2 (Front/Rear) — Set to 1 if FRONT terminals are selected.
+        Bit 3 (Compliance) — Set to 1 if in real compliance.
+        Bit 4 (OVP) — Set to 1 if the over voltage protection limit was reached.
+        Bit 5 (Math) — Set to 1 if math expression (calc1) is enabled.
+        Bit 6 (Null) — Set to 1 if Null is enabled.
+        Bit 7 (Limits) — Set to 1 if a limit test (calc2) is enabled.
+        Bits 8 and 9 (Limit Results) — Provides limit test results (see grading and sorting modes below).
+        Bit 10 (Auto-ohms) — Set to 1 if auto-ohms enabled.
+        Bit 11 (V-Meas) — Set to 1 if V-Measure is enabled.
+        Bit 12 (I-Meas) — Set to 1 if I-Measure is enabled.
+        Bit 13 (Ω-Meas) — Set to 1 if Ω-Measure is enabled.
+        Bit 14 (V-Sour) — Set to 1 if V-Source used.
+        Bit 15 (I-Sour) — Set to 1 if I-Source used.
+        Bit 16 (Range Compliance) — Set to 1 if in range compliance.
+        Bit 17 (Offset Compensation) — Set to 1 if Offset Compensated Ohms is enabled.
+        Bit 18 — Contact check failure (see Appendix F).
+        Bits 19, 20 and 21 (Limit Results) — Provides limit test results
+        (see grading and sorting modes below).
+        Bit 22 (Remote Sense) — Set to 1 if 4-wire remote sense selected.
+        Bit 23 (Pulse Mode) — Set to 1 if in the Pulse Mode.
+    */
+    
+    int items_parsed = sscanf(src_line, "%f,%f,%f,%f,%f", 
+                              &meas_u, &meas_i, &meas_r, &meas_t, &status);
+
+    if(items_parsed == 5)
+    {
+        mqtt_publish_float("feeds/float/%s/meas_U", meas_u);
+        mqtt_publish_float("feeds/float/%s/meas_I", meas_i);
+        mqtt_publish_float("feeds/float/%s/meas_R", meas_r);
+        mqtt_publish_float("feeds/float/%s/meas_t", meas_t);
+        mqtt_publish_float("feeds/float/%s/meas_status", status);
+    }
+
 }

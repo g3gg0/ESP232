@@ -108,7 +108,7 @@ void mqtt_publish_float(const char *name, float value)
     char buffer[32];
 
     sprintf(path_buffer, name, current_config.mqtt_client);
-    sprintf(buffer, "%0.2f", value);
+    sprintf(buffer, "%f", value);
 
     if (!mqtt.publish(path_buffer, buffer))
     {
