@@ -36,7 +36,7 @@ void cfg_reset()
     strcpy(current_config.mqtt_user, "");
     strcpy(current_config.mqtt_password, "");
     strcpy(current_config.mqtt_client, "ESP232");
-    current_config.mqtt_publish = 2;
+    current_config.mqtt_publish = 0;
     current_config.mqtt_publish_rate = 250;
 
     current_config.baudrate = 115200;
