@@ -125,14 +125,15 @@ void disp_parse(bool success, const char *src_line)
     int start = 0;
     char line[64];
 
-        mqtt_publish_string("debug/string/%s/src_line", src_line);
-        mqtt_publish_string("debug/string/%s/success", success ? "true" : "false");
-
+    mqtt_publish_string("debug/string/%s/success", success ? "true" : "false");
+    
     if(!success)
     {
         return;
     }
     
+    mqtt_publish_string("debug/string/%s/src_line", src_line);
+
     strncpy(line, src_line, sizeof(line));
 
     if(line[0] != '"')
