@@ -1,5 +1,6 @@
 
 #include <driver\uart.h>
+#include "Config.h"
 
 WiFiServer telnet(23);
 WiFiClient client;
@@ -39,10 +40,11 @@ void serial_setup()
             .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
         };
 
-        pinMode(3, INPUT);
-
+        pinMode(GPIO_RXD, INPUT);
+        pinMode(GPIO_TXD, OUTPUT);
         uart_param_config(uart_num, &uart_config);
-        uart_set_pin(uart_num, 1, 3, -1, -1);
+        uart_set_pin(uart_num, GPIO_TXD, GPIO_RXD, GPIO_RTS, GPIO_CTS);
+
         uart_driver_install(uart_num, uart_buffer_size, 0, 100, &uart_queue, 0);
         uart_set_sw_flow_ctrl(uart_num, false, 0, 0);
         uart_set_hw_flow_ctrl(uart_num, UART_HW_FLOWCTRL_DISABLE, 0);
@@ -66,8 +68,12 @@ void serial_setup()
 #endif
     serial_started = true;
 
-    pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, HIGH);
+#if defined(ESP232v2)
+    led_set(0, 0, 255, 0);
+#else
+    pinMode(GPIO_LED, OUTPUT);
+    digitalWrite(GPIO_LED, HIGH);
+#endif
 }
 
 void serial_print(const char *str, int length)
@@ -122,16 +128,16 @@ bool serial_loop_rx()
 #ifndef IDF
         if (current_config.verbose)
         {
-            Serial.printf("[Serial] New client connected: %s\n", remote);
+            DEBUG_PRINT("[Serial] New client connected: %s\n", remote);
         }
 
         if (strstr(current_config.connect_string, "%s"))
         {
-            Serial.printf(current_config.connect_string, remote);
+            DEBUG_PRINT(current_config.connect_string, remote);
         }
         else
         {
-            Serial.printf(current_config.connect_string);
+            DEBUG_PRINT(current_config.connect_string);
         }
 #endif
     }
@@ -145,7 +151,7 @@ bool serial_loop_rx()
     {
         client_connected = false;
 #ifndef IDF
-        Serial.printf(current_config.disconnect_string);
+        DEBUG_PRINT(current_config.disconnect_string);
 #endif
 
         client.stop();
@@ -163,9 +169,13 @@ bool serial_loop_rx()
 
     if (avail > 0)
     {
-        digitalWrite(LED_PIN, HIGH);
+#if defined(ESP232v2)
+        led_set(0, 0, 255, 0);
+#else
+        digitalWrite(GPIO_LED, HIGH);
+#endif        
         int net_read = client.read(serial_buf, net_avail);
-        // Serial.printf("r: %d/%d", net_avail, net_read);
+        DEBUG_PRINT("r: %d/%d", net_avail, net_read);
 #ifdef IDF
         uart_write_bytes(uart_num, (const char *)serial_buf, net_read);
 #else
@@ -175,7 +185,12 @@ bool serial_loop_rx()
         /* no delay needed anymore, deactivated Tx buffer. enabling it causes Rx loss on IDF. sigh. */
         //uint32_t delay_ms = net_read * delay_us_per_byte / 1000;
         //delay(delay_ms);
-        digitalWrite(LED_PIN, LOW);
+        
+#if defined(ESP232v2)
+        led_set(0, 0, 0, 0);
+#else
+        digitalWrite(GPIO_LED, LOW);
+#endif
 
         last_activity = current_millis;
     }
@@ -222,7 +237,12 @@ bool serial_loop_tx()
             while (pos < length)
             {
                 uint8_t ch = 0;
-                digitalWrite(LED_PIN, HIGH);
+                
+#if defined(ESP232v2)
+                led_set(0, 0, 255, 0);
+#else
+                digitalWrite(GPIO_LED, HIGH);
+#endif
 
 #ifdef IDF
                 ch = buffer[pos++];
@@ -234,7 +254,11 @@ bool serial_loop_tx()
                     udp_out.write((const uint8_t *)&ch, 1);
                 }
 
-                digitalWrite(LED_PIN, LOW);
+#if defined(ESP232v2)
+                led_set(0, 0, 0, 0);
+#else
+                digitalWrite(GPIO_LED, LOW);
+#endif
 
                 serial_buf[rcv_pos++] = ch;
                 scpi_cb(ch);

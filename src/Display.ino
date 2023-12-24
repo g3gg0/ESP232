@@ -1,5 +1,6 @@
 
 #include "scpi.h"
+#include "Config.h"
 
 static int line_pos = 0;
 static uint8_t line_buffer[64];
@@ -126,7 +127,7 @@ void disp_parse(bool success, const char *src_line)
     char line[64];
 
     mqtt_publish_string("debug/string/%s/success", success ? "true" : "false");
-    
+
     if(!success)
     {
         return;

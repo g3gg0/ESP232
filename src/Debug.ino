@@ -1,4 +1,5 @@
 
+#include "Config.h"
 WiFiServer debug_server(2323);
 WiFiClient debug_client;
 char debug_buf[1024];

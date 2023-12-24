@@ -1,5 +1,6 @@
 
 #include "scpi.h"
+#include "Config.h"
 
 static int scpi_line_pos = 0;
 static uint8_t scpi_line_buffer[128];
@@ -18,10 +19,9 @@ QueueHandle_t scpi_commands;
 
 void scpi_debug(const char *msg)
 {
-    if(0)
+    if(1)
     {
-        serial_print("> ", 3);
-        serial_println(msg);
+        DEBUG_PRINT("> %s\n", msg);
     }
 }
 
@@ -56,7 +56,10 @@ bool scpi_loop()
                 {
                     return false;
                 }
-                xQueueReceiveFromISR(scpi_commands, &scpi_current, NULL);
+                if(xQueueReceiveFromISR(scpi_commands, &scpi_current, NULL) == pdFALSE)
+                {
+                    return false;
+                }
 
                 /* immediately restart loop */
                 scpi_state = SCPI_STATE_OPC;
@@ -137,7 +140,10 @@ bool scpi_loop()
                 
                 scpi_debug("SCPI_STATE_RESPONSE (timeout)");
                 /* query timed out */
-                scpi_current.resp(false, NULL);
+                if(scpi_current.resp)
+                {
+                    scpi_current.resp(false, NULL);
+                }
 
                 /* immediately restart loop */
                 scpi_state = SCPI_STATE_IDLE;
@@ -149,7 +155,10 @@ bool scpi_loop()
                 if(scpi_retries++ > scpi_opc_retries_max)
                 {
                     scpi_debug("SCPI_STATE_STB (scpi_retries++ > scpi_opc_retries_max) -> SCPI_STATE_IDLE");
-                    scpi_current.resp(false, NULL);
+                    if(scpi_current.resp)
+                    {
+                        scpi_current.resp(false, NULL);
+                    }
 
                     /* immediately restart loop */
                     scpi_state = SCPI_STATE_IDLE;
@@ -195,6 +204,8 @@ bool scpi_command(const char *command, bool has_response, bool check_error, void
     entry.has_response = has_response;
     entry.check_error = check_error;
     entry.resp = cbr ? cbr : &dummy_cbr;
+
+    DEBUG_PRINT("Queue new command: '%s'", command);
 
     return xQueueSend(scpi_commands, &entry, 0) == pdTRUE;
 }

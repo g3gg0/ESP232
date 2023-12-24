@@ -6,6 +6,26 @@
 #define CONFIG_SOFTAPNAME  "esp232-config"
 #define CONFIG_OTANAME     "ESP232"
 
+#if defined(ESP232v2)
+#define GPIO_RXD 44
+#define GPIO_TXD 43
+#define GPIO_RTS 0
+#define GPIO_CTS 10
+
+#define DEBUG_PRINT(fmt, ...) Serial.printf((fmt), ##__VA_ARGS__)
+#define DEBUG_BEGIN() Serial.begin(115200)
+#else
+#define GPIO_RXD 3
+#define GPIO_TXD 1
+#define GPIO_RTS -1
+#define GPIO_CTS -1
+#define GPIO_LED 13
+asd
+#define DEBUG_PRINT(fmt, ...) while(0)
+#define DEBUG_BEGIN() while(0)
+#endif
+
+
 
 typedef struct
 {

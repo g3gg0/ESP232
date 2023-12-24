@@ -1,7 +1,7 @@
 
 #include <PubSubClient.h>
 #include <ESP32httpUpdate.h>
-#include <Config.h>
+#include "Config.h"
 
 
 WiFiClient mqtt_client;
@@ -19,16 +19,7 @@ char response_topic[64];
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
-    // Serial.print("Message arrived [");
-    // Serial.print(topic);
-    // Serial.print("] ");
-    // Serial.print("'");
-    for (int i = 0; i < length; i++)
-    {
-        // Serial.print((char)payload[i]);
-    }
-    // Serial.print("'");
-    // Serial.println();
+    DEBUG_PRINT("Message arrived [%s] '%.*s\n", topic, payload);
 
     payload[length] = 0;
 
@@ -40,7 +31,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         if (!strncmp(command, "http", 4))
         {
             snprintf(buf, sizeof(buf)-1, "updating from: '%s'", command);
-            // Serial.printf("%s\n", buf);
+            DEBUG_PRINT("%s\n", buf);
 
             mqtt.publish(response_topic, buf);
             ESPhttpUpdate.rebootOnUpdate(false);
@@ -51,19 +42,19 @@ void callback(char *topic, byte *payload, unsigned int length)
                 case HTTP_UPDATE_FAILED:
                     snprintf(buf, sizeof(buf)-1, "HTTP_UPDATE_FAILED Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
                     mqtt.publish(response_topic, buf);
-                    // Serial.printf("%s\n", buf);
+                    DEBUG_PRINT("%s\n", buf);
                     break;
 
                 case HTTP_UPDATE_NO_UPDATES:
                     snprintf(buf, sizeof(buf)-1, "HTTP_UPDATE_NO_UPDATES");
                     mqtt.publish(response_topic, buf);
-                    // Serial.printf("%s\n", buf);
+                    DEBUG_PRINT("%s\n", buf);
                     break;
 
                 case HTTP_UPDATE_OK:
                     snprintf(buf, sizeof(buf)-1, "HTTP_UPDATE_OK");
                     mqtt.publish(response_topic, buf);
-                    // Serial.printf("%s\n", buf);
+                    DEBUG_PRINT("%s\n", buf);
                     delay(500);
                     ESP.restart();
                     break;
@@ -71,7 +62,7 @@ void callback(char *topic, byte *payload, unsigned int length)
                 default:
                     snprintf(buf, sizeof(buf)-1, "update failed");
                     mqtt.publish(response_topic, buf);
-                    // Serial.printf("%s\n", buf);
+                    DEBUG_PRINT("%s\n", buf);
                     break;
             }
         }
@@ -79,7 +70,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         {
             snprintf(buf, sizeof(buf)-1, "unknown command: '%s'", command);
             mqtt.publish(response_topic, buf);
-            // Serial.printf("%s\n", buf);
+            DEBUG_PRINT("%s\n", buf);
         }
     }
 }
@@ -99,7 +90,7 @@ void mqtt_publish_string(const char *name, const char *value)
     {
         mqtt_fail = true;
     }
-    // Serial.printf("Published %s : %s\n", path_buffer, value);
+    DEBUG_PRINT("Published %s : %s\n", path_buffer, value);
 }
 
 void mqtt_publish_float(const char *name, float value)
@@ -114,7 +105,7 @@ void mqtt_publish_float(const char *name, float value)
     {
         mqtt_fail = true;
     }
-    // Serial.printf("Published %s : %s\n", path_buffer, buffer);
+    DEBUG_PRINT("Published %s : %s\n", path_buffer, buffer);
 }
 
 void mqtt_publish_int(const char *name, uint32_t value)
@@ -133,7 +124,7 @@ void mqtt_publish_int(const char *name, uint32_t value)
     {
         mqtt_fail = true;
     }
-    // Serial.printf("Published %s : %s\n", path_buffer, buffer);
+    DEBUG_PRINT("Published %s : %s\n", path_buffer, buffer);
 }
 
 bool mqtt_loop()
@@ -228,7 +219,7 @@ void MQTT_connect()
 
     mqtt_lastConnect = curTime;
 
-    // Serial.println("MQTT: Connecting to MQTT... ");
+    DEBUG_PRINT("MQTT: Connecting to MQTT...\n");
     
     sprintf(command_topic, "tele/%s/command", current_config.mqtt_client);
     sprintf(response_topic, "tele/%s/response", current_config.mqtt_client);
@@ -242,14 +233,14 @@ void MQTT_connect()
         {
             mqtt_retries = 8;
         }
-        // Serial.printf("MQTT: (%d) ", mqtt.state());
-        // Serial.println("MQTT: Retrying MQTT connection");
+        DEBUG_PRINT("MQTT: (%d)\n", mqtt.state());
+        DEBUG_PRINT("MQTT: Retrying MQTT connection\n");
         mqtt.disconnect();
     }
     else
     {
         /* discard counts till then */
-        // Serial.println("MQTT Connected!");
+        DEBUG_PRINT("MQTT Connected\n");
         mqtt.subscribe(command_topic);
         mqtt_publish_string((char *)"feeds/string/%s/error", "");
     }

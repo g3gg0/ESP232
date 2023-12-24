@@ -26,11 +26,11 @@ void www_setup()
     webserver.onNotFound(handle_404);
 
     webserver.begin();
-    // Serial.println("HTTP server started");
+    DEBUG_PRINT("HTTP server started\n");
 
     if (!MDNS.begin(current_config.hostname))
     {
-        Serial.println("Error setting up MDNS responder!");
+        DEBUG_PRINT("Error setting up MDNS responder!\n");
         while (1)
         {
             delay(1000);
@@ -116,12 +116,12 @@ void handle_404()
         char buf[128];
         sprintf(buf, "HTTP/1.1 302 Found\r\nContent-Type: text/html\r\nContent-length: 0\r\nLocation: http://%s/\r\n\r\n", WiFi.softAPIP().toString().c_str());
         webserver.sendContent(buf);
-        // Serial.printf("[WWW] 302 - http://%s%s/ -> http://%s/\n", webserver.hostHeader().c_str(), webserver.uri().c_str(), WiFi.softAPIP().toString().c_str());
+        DEBUG_PRINT("[WWW] 302 - http://%s%s/ -> http://%s/\n", webserver.hostHeader().c_str(), webserver.uri().c_str(), WiFi.softAPIP().toString().c_str());
     }
     else
     {
         webserver.send(404, "text/plain", "So empty here");
-        // Serial.printf("[WWW] 404 - http://%s%s/\n", webserver.hostHeader().c_str(), webserver.uri().c_str());
+        DEBUG_PRINT("[WWW] 404 - http://%s%s/\n", webserver.hostHeader().c_str(), webserver.uri().c_str());
     }
 }
 
@@ -161,7 +161,7 @@ void handle_reset()
 
 void handle_test()
 {
-    // Serial.printf("Test\n");
+    DEBUG_PRINT("Test\n");
     webserver.send(200, "text/html", SendHTML());
 }
 
@@ -177,7 +177,7 @@ void handle_set_parm()
 
         int httpCode = http.GET();
 
-        // Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+        DEBUG_PRINT("[HTTP] GET... code: %d\n", httpCode);
 
         switch (httpCode)
         {
@@ -189,7 +189,7 @@ void handle_set_parm()
 
                 if (!buffer)
                 {
-                    // Serial.printf("[HTTP] Failed to alloc %d byte\n", blocksize);
+                    DEBUG_PRINT("[HTTP] Failed to alloc %d byte\n", blocksize);
                     return;
                 }
 
@@ -198,7 +198,7 @@ void handle_set_parm()
 
                 if (!file)
                 {
-                    // Serial.printf("[HTTP] Failed to open file\n", blocksize);
+                    DEBUG_PRINT("[HTTP] Failed to open file\n", blocksize);
                     return;
                 }
 
@@ -227,14 +227,14 @@ void handle_set_parm()
                 free(buffer);
                 file.close();
 
-                // Serial.printf("[HTTP] Finished. Wrote %d byte to %s\n", written, filename.c_str());
+                DEBUG_PRINT("[HTTP] Finished. Wrote %d byte to %s\n", written, filename.c_str());
                 webserver.send(200, "text/plain", "Downloaded " + url + " and wrote " + written + " byte to " + filename);
                 break;
             }
 
             default:
             {
-                // Serial.print("[HTTP] unexpected response\n");
+                DEBUG_PRINT("[HTTP] unexpected response\n");
                 webserver.send(200, "text/plain", "Unexpected HTTP status code " + httpCode);
                 break;
             }
@@ -247,7 +247,7 @@ void handle_set_parm()
     {
         String url = webserver.arg("http_update");
 
-        Serial.printf("Update from %s\n", url.c_str());
+        DEBUG_PRINT("Update from %s\n", url.c_str());
 
         ESPhttpUpdate.rebootOnUpdate(false);
         t_httpUpdate_return ret = ESPhttpUpdate.update(url);
@@ -256,18 +256,18 @@ void handle_set_parm()
         {
             case HTTP_UPDATE_FAILED:
                 webserver.send(200, "text/plain", "HTTP_UPDATE_FAILED while updating from " + url + " " + ESPhttpUpdate.getLastErrorString());
-                // Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+                DEBUG_PRINT("HTTP_UPDATE_FAILED Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
                 break;
 
             case HTTP_UPDATE_NO_UPDATES:
                 webserver.send(200, "text/plain", "HTTP_UPDATE_NO_UPDATES: Updating from " + url);
-                // Serial.println("Update failed: HTTP_UPDATE_NO_UPDATES");
+                DEBUG_PRINT("Update failed: HTTP_UPDATE_NO_UPDATES\n");
                 break;
 
             case HTTP_UPDATE_OK:
                 webserver.send(200, "text/html", "<html><head><meta http-equiv=\"Refresh\" content=\"5; url=/\"/></head><body><h1>Firmware updated. Rebooting...</h1>(will refresh page in 5 seconds)</body></html>");
                 webserver.close();
-                // Serial.println("Update successful");
+                DEBUG_PRINT("Update successful\n");
                 delay(500);
                 ESP.restart();
                 return;
@@ -311,7 +311,7 @@ void handle_set_parm()
 
     if (current_config.verbose)
     {
-        // Serial.printf("[Webserver] '%s' %d %d '%s' '%s'\n", current_config.hostname, current_config.baudrate, current_config.verbose, current_config.connect_string, current_config.disconnect_string);
+        DEBUG_PRINT("[Webserver] '%s' %d %d '%s' '%s'\n", current_config.hostname, current_config.baudrate, current_config.verbose, current_config.connect_string, current_config.disconnect_string);
     }
 
 
